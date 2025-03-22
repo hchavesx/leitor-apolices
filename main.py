@@ -11,7 +11,7 @@ app = FastAPI()
 # Configurar CORS para permitir chamadas do navegador
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Para produção, use seu domínio específico
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,7 +33,13 @@ def extrair_dados_apolice(texto: str) -> dict:
     if match_cpf:
         dados["cpf"] = match_cpf.group(1)
 
-    match_vigencia = re.search(r"[Vv]ig[êe]ncia[:\s]+das?\s+\d{2}[:hs\s]*do\s+dia\s+(\d{2}/\d{2}/\d{4}).+?\s+(\d{2}/\d{2}/\d{4})", texto)
+    # Novo padrão HDI
+    match_vigencia = re.search(
+        r"Vig[êe]ncia[:\s]+das\s+24hs?\s+do\s+dia\s+(\d{2}/\d{2}/\d{4})\s+às\s+24hs?\s+do\s+dia\s+(\d{2}/\d{2}/\d{4})",
+        texto, re.IGNORECASE
+    )
+    if not match_vigencia:
+        match_vigencia = re.search(r"[Vv]ig[êe]ncia[:\s]+das?\s+\d{2}[:hs\s]*do\s+dia\s+(\d{2}/\d{2}/\d{4}).+?\s+(\d{2}/\d{2}/\d{4})", texto)
     if not match_vigencia:
         match_vigencia = re.search(r"Vig[êe]ncia[:\s]+das\s+24H\s+de\s+(\d{2}/\d{2}/\d{4})\s+\w+\s+24H\s+de\s+(\d{2}/\d{2}/\d{4})", texto)
     if not match_vigencia:
