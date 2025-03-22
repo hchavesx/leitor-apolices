@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 import pdfplumber
@@ -14,26 +15,30 @@ def extrair_texto_pdf(file: UploadFile) -> str:
 def extrair_dados_apolice(texto: str) -> dict:
     dados = {}
 
-    match_nome = re.search(r"Nome:\s*(.+)", texto)
+    match_nome = re.search(r"Nome[:\s]+(?:Registro\s+do\s+)?Segurado[:\s]*(.+)", texto)
     if match_nome:
         dados["segurado"] = match_nome.group(1).strip()
 
-    match_cpf = re.search(r"CPF[:\s]+([0-9.\-]+)", texto)
+    match_cpf = re.search(r"CPF[:\s/]+([0-9.\-]+)", texto)
     if match_cpf:
         dados["cpf"] = match_cpf.group(1)
 
-    match_vigencia = re.search(r"às 24h de (\d{2}/\d{2}/\d{4}) às 24h de (\d{2}/\d{2}/\d{4})", texto)
+    match_vigencia = re.search(r"[Vv]ig[êe]ncia[:\s]+das?\s+\d{2}[:hs\s]*do\s+dia\s+(\d{2}/\d{2}/\d{4}).+?\s+(\d{2}/\d{2}/\d{4})", texto)
+    if not match_vigencia:
+        match_vigencia = re.search(r"Vig[êe]ncia[:\s]+das\s+24H\s+de\s+(\d{2}/\d{2}/\d{4})\s+\w+\s+24H\s+de\s+(\d{2}/\d{2}/\d{4})", texto)
+    if not match_vigencia:
+        match_vigencia = re.search(r"Vig[êe]ncia[:\s]+(\d{2}/\d{2}/\d{4}).+?(\d{2}/\d{2}/\d{4})", texto)
     if match_vigencia:
         dados["vigencia_inicio"] = match_vigencia.group(1)
         dados["vigencia_fim"] = match_vigencia.group(2)
 
-    match_valor = re.search(r"Prêmio Total\s*R\$\s*([\d,.]+)", texto)
+    match_valor = re.search(r"Prêmio Total\s*[:R\$]*\s*([\d.,]+)", texto)
     if match_valor:
         dados["valor_total"] = float(match_valor.group(1).replace(".", "").replace(",", "."))
 
-    match_bonus = re.search(r"Classe de B[oô]nus[:\s]+(.+?)\n", texto)
+    match_bonus = re.search(r"Classe B[oô]nus[:\s]+(\d{1,2})", texto)
     if match_bonus:
-        dados["classe_bonus"] = match_bonus.group(1).strip()
+        dados["classe_bonus"] = match_bonus.group(1)
     else:
         dados["classe_bonus"] = None
 
@@ -45,9 +50,21 @@ def extrair_dados_apolice(texto: str) -> dict:
     if match_chassi:
         dados["chassi"] = match_chassi.group(1)
 
-    match_modelo = re.search(r"Modelo[:\s]+([A-Z0-9\-\.\s]+)", texto)
+    match_modelo = re.search(r"Modelo[:\s]+([A-Z0-9\-\.\s\(\)]+)", texto)
     if match_modelo:
         dados["modelo_veiculo"] = match_modelo.group(1).strip()
+
+    match_fipe = re.search(r"C[oó]d[.]? FIPE[:\s]+(\d{6}-\d)", texto)
+    if match_fipe:
+        dados["codigo_fipe"] = match_fipe.group(1)
+
+    match_seguradora = re.search(r"(Allianz|Azul Seguros|HDI|Porto Seguro|Tokio Marine|Bradesco Auto|Liberty|Mapfre|SulAmérica)", texto, re.IGNORECASE)
+    if match_seguradora:
+        dados["seguradora"] = match_seguradora.group(1)
+
+    match_placa = re.search(r"Placa[:/\s]+([A-Z]{3}\d{1}[A-Z0-9]{2}|[A-Z]{3}\-\d{4})", texto)
+    if match_placa:
+        dados["placa"] = match_placa.group(1)
 
     return dados
 
