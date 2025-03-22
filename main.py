@@ -1,11 +1,21 @@
 
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
 import io
 import re
 
 app = FastAPI()
+
+# Configurar CORS para permitir chamadas do navegador
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Para produção, use seu domínio específico
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def extrair_texto_pdf(file: UploadFile) -> str:
     with pdfplumber.open(io.BytesIO(file.file.read())) as pdf:
